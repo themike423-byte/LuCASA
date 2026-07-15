@@ -192,7 +192,7 @@ a{ color:inherit; text-decoration:none; }
 
   <footer class="foot">
     <div class="foot-left">
-      Homes come from the <a id="sheetlink" href="#" target="_blank" rel="noreferrer">Lucas House Hunting sheet</a>. Add a Zillow link + your note there, hit Refresh, then ask Claude to enrich it with photos and stats. Commute is typical free-flow driving — tap "Verify on Maps" on any card for live traffic.
+      Homes come from the <a id="sheetlink" href="#" target="_blank" rel="noreferrer">Lucas House Hunting sheet</a>. Paste a Redfin link and your note into the two columns; photos, price and stats load automatically. Commute is typical free-flow driving. Tap "Verify on Maps" on any card for live traffic.
     </div>
   </footer>
 </div>
@@ -201,28 +201,18 @@ a{ color:inherit; text-decoration:none; }
 const ACADEMY = { name:"Sacramento Sheriff's Training Academy", address:"1000 River Walk Way, Carmichael, CA 95608", lat:38.6152, lng:-121.323 };
 const SHEET_HUMAN = "https://docs.google.com/spreadsheets/d/169phqWqJRChwTGkQxZShAUgdW0oAYVT5BQ8oye9wqkI/edit";
 const LIMIT=60, WARN=55, METERMAX=90;
-const IMG = s => `https://photos.zillowstatic.com/fp/${s}-cc_ft_1536.jpg`;
+// Photos arrive from /api/listings as full image URLs on Redfin's open CDN, so
+// the front-end just renders them.
 
-// Enrichment baked in by Claude (Zillow can't be scraped from a server). Keyed by zpid.
-const ENRICH = {
-  "25992334":{
-    address:"6457 Channing Dr, North Highlands, CA 95660",
-    price:339900, beds:3, baths:2, sqft:972, lot:"6,098 sqft", year:1956,
-    coords:{lat:38.684917,lng:-121.378136}, estMin:16,
-    summary:"Ranch, built 1956. $350/sqft, Zestimate $340.3K, no HOA, taxes ~$1,788/yr. Granite counters, tile floors, central air, detached 1-car garage, large covered patio. 32 days on market. Seller notes the 2nd bath + laundry may be unpermitted.",
-    photos:["d93602f910cec3f4024ea040de30f369","733156b9d628149c1533d021f57def14","842ef101e6891c11557700a259435e84","085f632bc4c21884a151c2a0f04470d3","b643408f228194f2cdd3eed6ba638c72"].map(IMG)
-  },
-  "25845536":{
-    address:"1465 Mathews Way, Sacramento, CA 95822",
-    price:365900, beds:3, baths:2, sqft:1029, lot:"6,534 sqft", year:1957,
-    coords:{lat:38.49017,lng:-121.50269}, estMin:33,
-    summary:"Cabrillo Park / Meadowview. $356/sqft, Zestimate $365.2K, no HOA, taxes ~$2,533/yr. 1 full + 1 half bath. Built 1957: carpet, wall furnace + wall AC, 2-car garage. 20 days on market.",
-    photos:["a257a1659ff5b842b409606d5952ef9e","fe7e4b6580aa41b00c2ee81961a58c34","6f9ab8d893d448db8515377e33e7b940","586e536efc372d89f2e1c29c3a2f13d5","49b02fd61488860f6eaec8c5c8aa2936"].map(IMG)
-  }
-};
-
-// Fallback seed if the live sheet fetch fails, so the app is never empty.
-const SEED = [{ link:"https://www.zillow.com/homedetails/6457-Channing-Dr-North-Highlands-CA-95660/25992334_zpid/", comment:"Minimum reno. fences need fixing. washer dryer arent permitted, needs some landscaping attention.", row:1 }];
+// Fallback seed if the live /api/listings fetch fails, so the app is never empty.
+// Shape mirrors what the API returns (already enriched).
+const SEED = [{
+  row:1, link:"https://www.zillow.com/homedetails/6457-Channing-Dr-North-Highlands-CA-95660/25992334_zpid/",
+  comment:"Minimum reno. fences need fixing. washer dryer arent permitted, needs some landscaping attention.",
+  zpid:"25992334", address:"6457 Channing Dr, North Highlands, CA 95660",
+  price:339900, beds:3, baths:2, sqft:972, lot:"6,098 sqft", year:1956,
+  coords:{lat:38.684917,lng:-121.378136}, summary:"", photos:[], enriched:true
+}];
 
 let listings=[], sort="recent", filter="all", academy={lat:ACADEMY.lat,lng:ACADEMY.lng};
 const geocache={};
@@ -256,27 +246,26 @@ async function route(from,to){
   return null;
 }
 
+// Rows already arrive enriched from /api/listings; just normalize into the shape
+// the renderer wants and reset the per-load commute fields.
 async function buildListings(rows){
-  return rows.map(r=>{
-    const zpid=zpidOf(r.link);
-    const e=ENRICH[zpid]||{};
-    return {
-      zpid, link:r.link, row:r.row, comment:r.comment,
-      address:e.address||slugAddr(r.link)||"Address unavailable",
-      price:e.price, beds:e.beds, baths:e.baths, sqft:e.sqft, lot:e.lot, year:e.year,
-      summary:e.summary||"", photos:e.photos||[], coords:e.coords||null, estMin:e.estMin,
-      minutes: e.estMin!=null?e.estMin:null, miles:null, live:false, enriched:!!e.address
-    };
-  });
+  return rows.map(r=>({
+    zpid:r.zpid||zpidOf(r.link), link:r.link, row:r.row, comment:r.comment,
+    address:r.address||slugAddr(r.link)||"Address unavailable",
+    price:r.price??null, beds:r.beds??null, baths:r.baths??null, sqft:r.sqft??null,
+    lot:r.lot||null, year:r.year??null, summary:r.summary||"",
+    photos:Array.isArray(r.photos)?r.photos:[], coords:r.coords||null,
+    minutes:null, miles:null, live:false, enriched:!!r.enriched
+  }));
 }
 
 async function computeCommute(l){
   let home=l.coords;
   if(!home) home=await geocode(l.address);
-  if(!home){ l.status = l.estMin!=null?"est":"unknown"; return; }
+  if(!home){ l.status="unknown"; return; }
   const r=await route(home,academy);
   if(r){ l.minutes=r.minutes; l.miles=r.miles; l.live=true; l.status="ok"; }
-  else { l.minutes=l.estMin!=null?l.estMin:null; l.miles=haversine(home,academy); l.live=false; l.status="est"; }
+  else { l.miles=haversine(home,academy); l.live=false; l.status="est"; }
 }
 
 function meterHTML(l){
@@ -301,14 +290,14 @@ function cardHTML(l){
   const photos=l.photos||[];
   const carousel = photos.length ? `
     <div class="carousel" data-carousel>
-      <div class="track">${photos.map(p=>`<img src="${p}" alt="" loading="lazy" onerror="this.dataset.bad=1;window.__pf&&window.__pf(this)">`).join("")}</div>
+      <div class="track">${photos.map(u=>`<img src="${u}" alt="" loading="lazy" onerror="this.dataset.bad=1;window.__pf&&window.__pf(this)">`).join("")}</div>
       ${photos.length>1?`<button class="cnav prev" data-prev aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <button class="cnav next" data-next aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
       <div class="ccount" data-count>1 / ${photos.length}</div>`:""}
     </div>` : `
     <div class="carousel"><div class="photo-fallback">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>
-      <span>Photos pending — ask Claude to enrich this one</span>
+      <span>Photos pending for this listing</span>
       <a class="photo-btn" href="${l.link}" target="_blank" rel="noreferrer">See on Zillow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
     </div></div>`;
 
