@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>LuCASA — Lucas's House Hunt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --ink:#15212b; --paper:#e9edf1; --card:#fff; --line:#d3dbe2;
+  --muted:#5c6b78; --text:#1b2733; --accent:#c46b2f;
+  --go:#167a45; --go-soft:#e4f3ea; --warn:#b9791a; --warn-soft:#fbf1de;
+  --stop:#b23b32; --stop-soft:#f8e7e5; --unknown:#7a8894;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --disp:'Archivo','Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; }
+body{
+  font-family:var(--sans); color:var(--text); background:var(--paper);
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+a{ color:inherit; text-decoration:none; }
+.wrap{ max-width:1200px; margin:0 auto; padding:0 clamp(12px,3.5vw,36px) 48px; }
+
+/* topbar */
+.topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 0 14px; flex-wrap:wrap; }
+.brand{ display:flex; align-items:center; gap:13px; min-width:0; }
+.brand-mark{
+  width:46px; height:46px; border-radius:13px; background:var(--ink); color:#fff; flex:none;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(21,33,43,.28);
+}
+.brand-mark svg{ width:24px; height:24px; }
+.brand-title{ font-family:var(--disp); font-weight:800; font-size:26px; letter-spacing:-.02em; line-height:1; color:var(--ink); }
+.brand-title b{ color:var(--accent); font-weight:800; }
+.brand-sub{ display:block; font-size:12px; color:var(--muted); margin-top:6px; }
+.brand-sub strong{ color:var(--text); font-weight:600; }
+.rule-chip{ border-radius:12px; padding:8px 15px; text-align:right; background:var(--ink); color:#fff; flex:none; }
+.rule-eyebrow{ display:block; font-size:9px; letter-spacing:.16em; text-transform:uppercase; opacity:.7; }
+.rule-val{ display:block; font-family:var(--mono); font-weight:700; font-size:17px; margin-top:2px; }
+
+/* stats + toolbar */
+.controls{ border-top:1px solid var(--line); padding:13px 0 18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.stat{ display:flex; flex-direction:column; padding-right:15px; margin-right:3px; border-right:1px solid var(--line); }
+.stat:last-of-type{ border-right:none; }
+.stat-num{ font-family:var(--mono); font-weight:700; font-size:24px; line-height:1; color:var(--ink); }
+.stat.go .stat-num{ color:var(--go); } .stat.stop .stat-num{ color:var(--stop); }
+.stat-lbl{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; margin-top:5px; }
+.tools{ display:flex; align-items:center; gap:9px; margin-left:auto; flex-wrap:wrap; }
+.seg{ display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card); }
+.seg button{ border:none; background:transparent; padding:9px 13px; font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer; border-right:1px solid var(--line); }
+.seg button:last-child{ border-right:none; }
+.seg button.on{ background:var(--ink); color:#fff; }
+.sortsel{ border:1px solid var(--line); border-radius:10px; background:var(--card); padding:9px 12px; font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--text); cursor:pointer; }
+.icon-btn{ border:1px solid var(--line); background:var(--card); border-radius:10px; padding:9px 11px; cursor:pointer; color:var(--muted); display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; }
+.icon-btn:hover{ border-color:var(--ink); color:var(--ink); }
+.icon-btn svg{ width:16px; height:16px; }
+.spin{ animation:spin 1s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* grid + cards */
+.grid{ display:grid; gap:18px; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); }
+.card{ background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; border-top:4px solid var(--unknown); }
+.card.go{ border-top-color:var(--go); } .card.warn{ border-top-color:var(--warn); } .card.stop{ border-top-color:var(--stop); }
+
+/* carousel — scroll-snap, native swipe on mobile */
+.carousel{ position:relative; background:#0d1720; aspect-ratio:16/10; }
+.track{ display:flex; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.track::-webkit-scrollbar{ display:none; }
+.track img{ min-width:100%; width:100%; height:100%; object-fit:cover; scroll-snap-align:center; flex:none; }
+.cnav{ position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:none; background:rgba(15,23,32,.55); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(4px); }
+.cnav svg{ width:20px; height:20px; }
+.cnav.prev{ left:9px; } .cnav.next{ right:9px; }
+.cnav:hover{ background:rgba(15,23,32,.85); }
+.ccount{ position:absolute; top:9px; right:9px; background:rgba(15,23,32,.62); color:#fff; font-family:var(--mono); font-size:11px; padding:3px 8px; border-radius:20px; }
+.photo-fallback{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; background:#eef2f5; color:var(--muted); font-size:13px; text-align:center; padding:16px; }
+.photo-fallback svg{ width:30px; height:30px; opacity:.5; }
+.photo-btn{ display:inline-flex; align-items:center; gap:6px; background:var(--ink); color:#fff; padding:8px 14px; border-radius:9px; font-size:12.5px; font-weight:600; }
+.photo-btn svg{ width:14px; height:14px; }
+
+.body{ padding:15px 15px 14px; display:flex; flex-direction:column; gap:12px; }
+
+/* commute meter */
+.meter{ border:1px solid var(--line); border-radius:12px; padding:11px 12px 12px; background:#fbfcfd; }
+.meter.go{ background:var(--go-soft); border-color:#bfe3cd; } .meter.warn{ background:var(--warn-soft); border-color:#eed9ac; } .meter.stop{ background:var(--stop-soft); border-color:#eecac6; }
+.meter-head{ display:flex; align-items:center; justify-content:space-between; }
+.meter-eyebrow{ font-size:9.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+.verdict{ font-size:11px; font-weight:700; padding:2px 9px; border-radius:20px; }
+.verdict.go{ background:var(--go); color:#fff; } .verdict.warn{ background:var(--warn); color:#fff; } .verdict.stop{ background:var(--stop); color:#fff; } .verdict.unknown{ background:#dbe1e7; color:var(--muted); }
+.meter-row{ display:flex; align-items:flex-end; justify-content:space-between; margin-top:6px; }
+.big-time{ display:flex; align-items:baseline; gap:5px; }
+.big-time .num{ font-family:var(--mono); font-weight:700; font-size:42px; line-height:.9; color:var(--ink); letter-spacing:-.02em; }
+.meter.go .big-time .num{ color:var(--go); } .meter.warn .big-time .num{ color:#9a6410; } .meter.stop .big-time .num{ color:var(--stop); }
+.big-time .unit{ font-size:13px; color:var(--muted); font-weight:600; }
+.side-num{ font-family:var(--mono); font-weight:700; font-size:16px; color:var(--text); display:block; text-align:right; }
+.side-lbl{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.gauge-track{ position:relative; height:8px; background:#dde3e9; border-radius:6px; margin-top:10px; }
+.gauge-fill{ height:100%; border-radius:6px; background:var(--unknown); transition:width .4s ease; }
+.meter.go .gauge-fill{ background:var(--go); } .meter.warn .gauge-fill{ background:var(--warn); } .meter.stop .gauge-fill{ background:var(--stop); }
+.gauge-limit{ position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink); }
+.gauge-limit span{ position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-family:var(--mono); font-size:9px; font-weight:700; color:var(--ink); }
+.gauge-scale{ display:flex; justify-content:space-between; margin-top:5px; font-family:var(--mono); font-size:9px; color:var(--muted); }
+.meter-note{ margin-top:8px; font-size:10.5px; color:var(--muted); font-style:italic; }
+
+.addr{ display:flex; align-items:flex-start; gap:6px; font-size:14px; font-weight:600; line-height:1.3; }
+.addr svg{ width:16px; height:16px; color:var(--accent); flex:none; margin-top:1px; }
+.price{ font-family:var(--mono); font-weight:700; font-size:20px; color:var(--ink); }
+.specs{ display:flex; flex-wrap:wrap; gap:12px 16px; padding:10px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.spec{ display:flex; align-items:baseline; gap:5px; }
+.spec .n{ font-family:var(--mono); font-weight:700; font-size:15px; }
+.spec .l{ font-size:11px; color:var(--muted); }
+.summary{ background:#f2f5f7; border-radius:9px; padding:9px 11px; }
+.summary-eyebrow{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+.summary p{ margin:4px 0 0; font-size:12px; line-height:1.5; color:var(--muted); }
+.notes{ background:#fff7ef; border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:9px 12px; }
+.notes-eyebrow{ font-size:9px; letter-spacing:.13em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+.notes p{ margin:4px 0 0; font-size:13px; line-height:1.5; white-space:pre-wrap; }
+.actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.btn{ display:inline-flex; align-items:center; gap:7px; border-radius:10px; padding:9px 14px; font-family:var(--sans); font-weight:600; font-size:13px; cursor:pointer; border:1px solid transparent; }
+.btn svg{ width:15px; height:15px; }
+.btn-primary{ background:var(--ink); color:#fff; flex:1; justify-content:center; }
+.btn-primary:hover{ background:#0e1922; }
+.btn-ghost{ background:var(--card); border-color:var(--line); color:var(--text); }
+.btn-ghost:hover{ border-color:var(--ink); }
+
+/* states */
+.msg{ text-align:center; max-width:520px; margin:56px auto; padding:0 20px; color:var(--muted); }
+.msg h2{ font-family:var(--disp); font-weight:800; font-size:22px; color:var(--ink); margin:0 0 10px; }
+.msg p{ font-size:14px; line-height:1.6; }
+.skeleton{ height:360px; border-radius:16px; background:linear-gradient(100deg,#e6eaee 30%,#eef2f5 50%,#e6eaee 70%); background-size:200% 100%; animation:sk 1.3s ease infinite; }
+@keyframes sk{ to{ background-position:-200% 0; } }
+
+.foot{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-top:30px; padding-top:16px; border-top:1px solid var(--line); }
+.foot-left{ font-size:11.5px; color:var(--muted); max-width:60ch; line-height:1.5; }
+.foot a{ color:var(--accent); font-weight:600; }
+
+@media (max-width:640px){
+  .grid{ grid-template-columns:1fr; }
+  .brand-title{ font-size:23px; }
+  .tools{ width:100%; margin-left:0; }
+  .sortsel{ flex:1; }
+  .stat{ padding-right:12px; }
+  .big-time .num{ font-size:38px; }
+}
+@media (prefers-reduced-motion:reduce){ *{ animation:none!important; transition:none!important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">Lu<b>CASA</b></div>
+        <span class="brand-sub">Lucas's house hunt, ranked by the drive to <strong>the Sheriff's Academy</strong>, Carmichael</span>
+      </div>
+    </div>
+    <div class="rule-chip">
+      <span class="rule-eyebrow">Max commute</span>
+      <span class="rule-val">60 min</span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="stat"><span class="stat-num" id="s-total">–</span><span class="stat-lbl">homes</span></div>
+    <div class="stat go"><span class="stat-num" id="s-pass">–</span><span class="stat-lbl">under 60 min</span></div>
+    <div class="stat stop"><span class="stat-num" id="s-fail">–</span><span class="stat-lbl">over / unknown</span></div>
+    <div class="tools">
+      <div class="seg" id="filter">
+        <button data-f="all" class="on">All</button>
+        <button data-f="pass">Under 60</button>
+        <button data-f="fail">Over / ?</button>
+      </div>
+      <select class="sortsel" id="sort">
+        <option value="recent">Sort: recently added by Mike</option>
+        <option value="commute">Sort: shortest commute</option>
+        <option value="price">Sort: lowest price</option>
+      </select>
+      <button class="icon-btn" id="refresh" title="Re-read the sheet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v5h-5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <main id="grid" class="grid"></main>
+
+  <footer class="foot">
+    <div class="foot-left">
+      Homes come from the <a id="sheetlink" href="#" target="_blank" rel="noreferrer">Lucas House Hunting sheet</a>. Add a Zillow link + your note there, hit Refresh, then ask Claude to enrich it with photos and stats. Commute is typical free-flow driving — tap "Verify on Maps" on any card for live traffic.
+    </div>
+  </footer>
+</div>
+
+<script>
+const ACADEMY = { name:"Sacramento Sheriff's Training Academy", address:"1000 River Walk Way, Carmichael, CA 95608", lat:38.6152, lng:-121.323 };
+const SHEET_HUMAN = "https://docs.google.com/spreadsheets/d/169phqWqJRChwTGkQxZShAUgdW0oAYVT5BQ8oye9wqkI/edit";
+const LIMIT=60, WARN=55, METERMAX=90;
+const IMG = s => `https://photos.zillowstatic.com/fp/${s}-cc_ft_1536.jpg`;
+
+// Enrichment baked in by Claude (Zillow can't be scraped from a server). Keyed by zpid.
+const ENRICH = {
+  "25992334":{
+    address:"6457 Channing Dr, North Highlands, CA 95660",
+    price:339900, beds:3, baths:2, sqft:972, lot:"6,098 sqft", year:1956,
+    coords:{lat:38.684917,lng:-121.378136}, estMin:16,
+    summary:"Ranch, built 1956. $350/sqft, Zestimate $340.3K, no HOA, taxes ~$1,788/yr. Granite counters, tile floors, central air, detached 1-car garage, large covered patio. 32 days on market. Seller notes the 2nd bath + laundry may be unpermitted.",
+    photos:["d93602f910cec3f4024ea040de30f369","733156b9d628149c1533d021f57def14","842ef101e6891c11557700a259435e84","085f632bc4c21884a151c2a0f04470d3","b643408f228194f2cdd3eed6ba638c72"].map(IMG)
+  },
+  "25845536":{
+    address:"1465 Mathews Way, Sacramento, CA 95822",
+    price:365900, beds:3, baths:2, sqft:1029, lot:"6,534 sqft", year:1957,
+    coords:{lat:38.49017,lng:-121.50269}, estMin:33,
+    summary:"Cabrillo Park / Meadowview. $356/sqft, Zestimate $365.2K, no HOA, taxes ~$2,533/yr. 1 full + 1 half bath. Built 1957: carpet, wall furnace + wall AC, 2-car garage. 20 days on market.",
+    photos:["a257a1659ff5b842b409606d5952ef9e","fe7e4b6580aa41b00c2ee81961a58c34","6f9ab8d893d448db8515377e33e7b940","586e536efc372d89f2e1c29c3a2f13d5","49b02fd61488860f6eaec8c5c8aa2936"].map(IMG)
+  }
+};
+
+// Fallback seed if the live sheet fetch fails, so the app is never empty.
+const SEED = [{ link:"https://www.zillow.com/homedetails/6457-Channing-Dr-North-Highlands-CA-95660/25992334_zpid/", comment:"Minimum reno. fences need fixing. washer dryer arent permitted, needs some landscaping attention.", row:1 }];
+
+let listings=[], sort="recent", filter="all", academy={lat:ACADEMY.lat,lng:ACADEMY.lng};
+const geocache={};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const zpidOf = u => (u.match(/(\d+)_zpid/)||[])[1] || "";
+const slugAddr = u => { const m=u.match(/homedetails\/([^/]+)\/\d+_zpid/); return m?decodeURIComponent(m[1]).replace(/-/g," ").trim():""; };
+const money = n => n?("$"+Number(n).toLocaleString("en-US")):"";
+const num = n => n?Number(n).toLocaleString("en-US"):"";
+const band = m => m==null?"unknown":(m>LIMIT?"stop":(m>=WARN?"warn":"go"));
+const mapsLink = a => "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+encodeURIComponent(a)+"&destination="+encodeURIComponent(ACADEMY.address);
+
+function haversine(a,b){ const R=3958.8,dLa=(b.lat-a.lat)*Math.PI/180,dLn=(b.lng-a.lng)*Math.PI/180,la1=a.lat*Math.PI/180,la2=b.lat*Math.PI/180; const h=Math.sin(dLa/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLn/2)**2; return R*2*Math.asin(Math.sqrt(h)); }
+
+async function geocode(addr){
+  if(geocache[addr]) return geocache[addr];
+  try{
+    const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(addr));
+    const d=await r.json();
+    if(d&&d[0]){ const c={lat:+d[0].lat,lng:+d[0].lon}; geocache[addr]=c; return c; }
+  }catch(e){}
+  return null;
+}
+async function route(from,to){
+  try{
+    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`);
+    const d=await r.json();
+    if(d.routes&&d.routes[0]) return { minutes:d.routes[0].duration/60, miles:d.routes[0].distance/1609.34 };
+  }catch(e){}
+  return null;
+}
+
+async function buildListings(rows){
+  return rows.map(r=>{
+    const zpid=zpidOf(r.link);
+    const e=ENRICH[zpid]||{};
+    return {
+      zpid, link:r.link, row:r.row, comment:r.comment,
+      address:e.address||slugAddr(r.link)||"Address unavailable",
+      price:e.price, beds:e.beds, baths:e.baths, sqft:e.sqft, lot:e.lot, year:e.year,
+      summary:e.summary||"", photos:e.photos||[], coords:e.coords||null, estMin:e.estMin,
+      minutes: e.estMin!=null?e.estMin:null, miles:null, live:false, enriched:!!e.address
+    };
+  });
+}
+
+async function computeCommute(l){
+  let home=l.coords;
+  if(!home) home=await geocode(l.address);
+  if(!home){ l.status = l.estMin!=null?"est":"unknown"; return; }
+  const r=await route(home,academy);
+  if(r){ l.minutes=r.minutes; l.miles=r.miles; l.live=true; l.status="ok"; }
+  else { l.minutes=l.estMin!=null?l.estMin:null; l.miles=haversine(home,academy); l.live=false; l.status="est"; }
+}
+
+function meterHTML(l){
+  const b=band(l.minutes);
+  const pct=l.minutes==null?0:Math.min(l.minutes/METERMAX,1)*100;
+  const limitPct=(LIMIT/METERMAX)*100;
+  const verdict=l.minutes==null?(l.status==="unknown"?"Address not found":"Calculating…"):(b==="stop"?"Over limit":b==="warn"?"Cutting it close":"Within limit");
+  const milesLbl = l.miles!=null?(l.live?"miles":"miles (est.)"):"";
+  return `<div class="meter ${b}">
+    <div class="meter-head"><span class="meter-eyebrow">Commute to academy</span><span class="verdict ${b}">${verdict}</span></div>
+    <div class="meter-row">
+      <div class="big-time"><span class="num">${l.minutes==null?"–":Math.round(l.minutes)}</span><span class="unit">min</span></div>
+      <div><span class="side-num">${l.miles!=null?l.miles.toFixed(1):"–"}</span><span class="side-lbl">${milesLbl}</span></div>
+    </div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:${pct}%"></div><div class="gauge-limit" style="left:${limitPct}%"><span>60</span></div></div>
+    <div class="gauge-scale"><span>0</span><span>${METERMAX} min</span></div>
+    ${(!l.live && l.minutes!=null)?'<div class="meter-note">Estimated drive. Tap "Verify on Maps" for live traffic.</div>':""}
+  </div>`;
+}
+
+function cardHTML(l){
+  const photos=l.photos||[];
+  const carousel = photos.length ? `
+    <div class="carousel" data-carousel>
+      <div class="track">${photos.map(p=>`<img src="${p}" alt="" loading="lazy" onerror="this.dataset.bad=1;window.__pf&&window.__pf(this)">`).join("")}</div>
+      ${photos.length>1?`<button class="cnav prev" data-prev aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="cnav next" data-next aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="ccount" data-count>1 / ${photos.length}</div>`:""}
+    </div>` : `
+    <div class="carousel"><div class="photo-fallback">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg>
+      <span>Photos pending — ask Claude to enrich this one</span>
+      <a class="photo-btn" href="${l.link}" target="_blank" rel="noreferrer">See on Zillow <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
+    </div></div>`;
+
+  const specs = l.enriched ? `<div class="specs">
+    <div class="spec"><span class="n">${l.beds||"–"}</span><span class="l">bd</span></div>
+    <div class="spec"><span class="n">${l.baths||"–"}</span><span class="l">ba</span></div>
+    <div class="spec"><span class="n">${num(l.sqft)||"–"}</span><span class="l">sqft</span></div>
+    ${l.year?`<div class="spec"><span class="n">${l.year}</span><span class="l">built</span></div>`:""}
+    ${l.lot?`<div class="spec"><span class="n">${l.lot}</span><span class="l">lot</span></div>`:""}
+  </div>` : "";
+
+  return `<article class="card ${band(l.minutes)}">
+    ${carousel}
+    <div class="body">
+      ${meterHTML(l)}
+      <div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span>${esc(l.address)}</span></div>
+      ${l.price?`<div class="price">${money(l.price)}</div>`:""}
+      ${specs}
+      ${l.summary?`<div class="summary"><span class="summary-eyebrow">From the listing</span><p>${esc(l.summary)}</p></div>`:""}
+      ${l.comment?`<div class="notes"><span class="notes-eyebrow">Mike's notes</span><p>${esc(l.comment)}</p></div>`:""}
+      <div class="actions">
+        <a class="btn btn-primary" href="${mapsLink(l.address)}" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Verify on Maps
+        </a>
+        <a class="btn btn-ghost" href="${l.link}" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg> Listing
+        </a>
+      </div>
+    </div>
+  </article>`;
+}
+
+// hide broken photos; if all broken, show fallback
+window.__pf = function(img){
+  const car=img.closest("[data-carousel]"); if(!car) return;
+  const imgs=[...car.querySelectorAll("img")];
+  img.style.display="none";
+  if(imgs.every(i=>i.dataset.bad)){
+    car.innerHTML=`<div class="photo-fallback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-9 9"/></svg><span>Photos didn't load</span><a class="photo-btn" href="${car.closest('.card').querySelector('.btn-ghost').href}" target="_blank" rel="noreferrer">See on Zillow</a></div>`;
+  }
+};
+
+function sortListings(arr){
+  const a=[...arr];
+  if(sort==="recent") a.sort((x,y)=>y.row-x.row);
+  else if(sort==="commute") a.sort((x,y)=>(x.minutes==null?1e9:x.minutes)-(y.minutes==null?1e9:y.minutes));
+  else if(sort==="price") a.sort((x,y)=>(x.price||1e12)-(y.price||1e12));
+  return a;
+}
+function applyFilter(arr){
+  if(filter==="pass") return arr.filter(l=>l.minutes!=null&&l.minutes<=LIMIT);
+  if(filter==="fail") return arr.filter(l=>l.minutes==null||l.minutes>LIMIT);
+  return arr;
+}
+
+function render(){
+  const view=sortListings(applyFilter(listings));
+  const pass=listings.filter(l=>l.minutes!=null&&l.minutes<=LIMIT).length;
+  $("#s-total").textContent=listings.length;
+  $("#s-pass").textContent=pass;
+  $("#s-fail").textContent=listings.length-pass;
+  const grid=$("#grid");
+  if(!view.length){ grid.innerHTML=`<div class="msg"><h2>No homes to show</h2><p>Add a Zillow link and a note to the sheet, then hit Refresh.</p></div>`; return; }
+  grid.innerHTML=view.map(cardHTML).join("");
+  grid.querySelectorAll("[data-carousel]").forEach(car=>{
+    const track=car.querySelector(".track"), count=car.querySelector("[data-count]");
+    const total=track.querySelectorAll("img").length;
+    const upd=()=>{ if(!count)return; const i=Math.round(track.scrollLeft/track.clientWidth)+1; count.textContent=`${Math.min(i,total)} / ${total}`; };
+    track.addEventListener("scroll",upd,{passive:true});
+    const pv=car.querySelector("[data-prev]"), nx=car.querySelector("[data-next]");
+    pv&&pv.addEventListener("click",()=>track.scrollBy({left:-track.clientWidth,behavior:"smooth"}));
+    nx&&nx.addEventListener("click",()=>track.scrollBy({left:track.clientWidth,behavior:"smooth"}));
+  });
+}
+
+async function loadCommutes(){
+  for(const l of listings){ await computeCommute(l); render(); }
+}
+
+async function refresh(){
+  const btn=$("#refresh"); btn.classList.add("loading"); btn.querySelector("svg").classList.add("spin");
+  $("#grid").innerHTML=`<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
+  let rows=SEED;
+  try{
+    const r=await fetch("/api/listings",{cache:"no-store"});
+    const d=await r.json();
+    if(d.listings&&d.listings.length) rows=d.listings;
+  }catch(e){}
+  listings=await buildListings(rows);
+  render();
+  btn.querySelector("svg").classList.remove("spin");
+  loadCommutes();
+}
+
+// wire controls
+$("#sheetlink").href=SHEET_HUMAN;
+$("#filter").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; filter=b.dataset.f; [...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b)); render(); });
+$("#sort").addEventListener("change",e=>{ sort=e.target.value; render(); });
+$("#refresh").addEventListener("click",refresh);
+
+(async function init(){
+  const g=await geocode(ACADEMY.address); if(g) academy=g;
+  refresh();
+})();
+</script>
+</body>
+</html>
