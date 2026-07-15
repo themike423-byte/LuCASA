@@ -189,12 +189,6 @@ a{ color:inherit; text-decoration:none; }
   </div>
 
   <main id="grid" class="grid"></main>
-
-  <footer class="foot">
-    <div class="foot-left">
-      Homes come from the <a id="sheetlink" href="#" target="_blank" rel="noreferrer">Lucas House Hunting sheet</a>. Paste a Redfin link and your note into the two columns; photos, price and stats load automatically. Commute is typical free-flow driving. Tap "Verify on Maps" on any card for live traffic.
-    </div>
-  </footer>
 </div>
 
 <script>
@@ -394,7 +388,6 @@ async function refresh(){
 }
 
 // wire controls
-$("#sheetlink").href=SHEET_HUMAN;
 $("#filter").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; filter=b.dataset.f; [...e.currentTarget.children].forEach(x=>x.classList.toggle("on",x===b)); render(); });
 $("#sort").addEventListener("change",e=>{ sort=e.target.value; render(); });
 $("#refresh").addEventListener("click",refresh);
