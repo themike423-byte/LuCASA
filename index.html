@@ -382,7 +382,8 @@ async function refresh(){
   $("#grid").innerHTML=`<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
   let rows=SEED;
   try{
-    const r=await fetch("/api/listings",{cache:"no-store"});
+    // cache-buster forces a fresh edge execution so a just-added home enriches now
+    const r=await fetch("/api/listings?t="+Date.now(),{cache:"no-store"});
     const d=await r.json();
     if(d.listings&&d.listings.length) rows=d.listings;
   }catch(e){}
