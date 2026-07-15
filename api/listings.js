@@ -8,8 +8,10 @@ const SHEET_NAME = "Sheet1";
 // switched to Redfin. Map those to their Redfin listing so they enrich live
 // without anyone editing the sheet. New rows should just be Redfin links.
 const ZILLOW_TO_REDFIN = {
+  "25992334": "https://www.redfin.com/CA/North-Highlands/6457-Channing-Dr-95660/home/19230495",
   "25800015": "https://www.redfin.com/CA/Sacramento/3224-San-Jose-Way-95817/home/19422463",
-  "26091272": "https://www.redfin.com/CA/Sacramento/2041-Bowling-Green-Dr-95825/home/19138793"
+  "26091272": "https://www.redfin.com/CA/Sacramento/2041-Bowling-Green-Dr-95825/home/19138793",
+  "25843094": "https://www.redfin.com/CA/Sacramento/7033-3rd-Pkwy-95823/home/19382482"
 };
 
 // In-memory cache of successful Redfin enrichments, keyed by URL. A warm
