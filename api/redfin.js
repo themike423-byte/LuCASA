@@ -32,9 +32,12 @@ const HEADERS = {
 const isRedfinUrl = (u) => /(^|\.)redfin\.com\//i.test(u || "");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Detect Redfin's AWS WAF interstitial (HTTP 202 + a tiny JS-challenge page).
+// Detect Redfin's AWS WAF interstitial. It is a tiny page (~2.5 KB) served with
+// HTTP 202 and no real listing content. NOTE: real Redfin pages also embed the
+// AWS WAF SDK script, so we must NOT key off the string "awswaf" — only off the
+// interstitial's actual shape (202 status, or a tiny body with no price).
 const isChallenge = (status, html) =>
-  status === 202 || /awsWafCookie|awswaf|challenge-container|Please enable JS/i.test(html);
+  status === 202 || (html.length < 8000 && !/"price"\s*:\s*"?\d{4,}/.test(html));
 
 // Fetch a Redfin listing page and return normalized data, or { ok:false }.
 // Retries a couple of times because the WAF challenge is usually transient at
